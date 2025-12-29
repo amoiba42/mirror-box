@@ -1,0 +1,17 @@
+{
+    "min_angles": {
+        "index": {
+            "mcp": 8.1,
+            "pip": 6.0,
+            "dip": 3.9
+        }
+    },
+    "max_angles": {
+        "index": {
+            "mcp": 24.6,
+            "pip": 141.8,
+            "dip": 48.1
+        }
+    },
+    "timestamp": 1764625741.6870139
+}

@@ -1,0 +1,18 @@
+# Core Science Stack
+numpy>=1.26.0
+scipy>=1.11.0
+pandas>=2.1.0
+
+# Computer Vision & ML
+# Note: On Pi 5, install opencv via system apt (python3-opencv) for best speed.
+# For desktop dev, this wheel is fine:
+opencv-python>=4.8.0
+mediapipe>=0.10.9
+
+# Utilities
+click>=8.1.0        # For the CLI
+colorama>=0.4.6     # Nice terminal outputs
+matplotlib>=3.8.0   # For plotting data summaries later
+
+# Testing
+pytest>=7.4.0
