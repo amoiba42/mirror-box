@@ -15,18 +15,24 @@ mpu = MPU9250(
     mode=AK8963_MODE_C100HZ)      # Keep 100Hz for smooth tracking
 
 # Configure the MPU9250
-mpu.configure()
+try:
+    print("Configuring MPU...")
+    mpu.configure() 
+    print("Configuration complete!")
+except OSError:
+    print("Warning: Magnetometer (compass) failed to respond.")
+    print("Continuing with Accelerometer and Gyroscope only...")
 
 while True:
     # Read the accelerometer, gyroscope, and magnetometer values
     accel_data = mpu.readAccelerometerMaster()
     gyro_data = mpu.readGyroscopeMaster()
-    mag_data = mpu.readMagnetometerMaster()
+    # mag_data = mpu.readMagnetometerMaster()
 
     # Print the sensor values
     print("Accelerometer:", accel_data)
     print("Gyroscope:", gyro_data)
-    print("Magnetometer:", mag_data)
+    #print("Magnetometer:", mag_data)
 
     # Wait for 1 second before the next reading
     time.sleep(1)
