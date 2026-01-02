@@ -16,11 +16,77 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger("Main")
 
 def main():
-    parser = argparse.ArgumentParser(description="Stroke Rehab System - Mock Trial Runner")
-    parser.add_argument("--mode", type=str, default="mock", choices=["mock", "real"], help="Hardware mode")
-    parser.add_argument("--duration", type=int, default=60, help="Trial duration in seconds")
-    parser.add_argument("--complexity", type=int, default=0, help="MediaPipe Complexity (0=Pi, 1=Desktop)")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description="Stroke Rehab System - Mock Trial Runner")
+    # parser.add_argument("--mode", type=str, default="mock", choices=["mock", "real"], help="Hardware mode")
+    # parser.add_argument("--duration", type=int, default=60, help="Trial duration in seconds")
+    # parser.add_argument("--complexity", type=int, default=0, help="MediaPipe Complexity (0=Pi, 1=Desktop)")
+    # args = parser.parse_args()
+    print("=" * 60)
+    print("    STROKE REHABILITATION SYSTEM - TRIAL RUNNER")
+    print("=" * 60)
+    print()
+    
+    # Interactive mode selection
+    print("Hardware Mode:")
+    print("  1. Mock Mode (Simulated sensors)")
+    print("  2. Real Hardware Mode")
+    while True:
+        mode_choice = input("Select mode [1-2] (default: 1): ").strip()
+        if mode_choice == "" or mode_choice == "1":
+            mode = "mock"
+            break
+        elif mode_choice == "2":
+            mode = "real"
+            break
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+    
+    # Duration selection
+    print("\nTrial Duration:")
+    while True:
+        duration_input = input("Enter duration in seconds (default: 60): ").strip()
+        if duration_input == "":
+            duration = 60
+            break
+        try:
+            duration = int(duration_input)
+            if duration > 0:
+                break
+            else:
+                print("Duration must be positive.")
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    # MediaPipe complexity
+    print("\nMediaPipe Model Complexity:")
+    print("  0. Lite (Raspberry Pi optimized)")
+    print("  1. Full (Desktop/high-performance)")
+    while True:
+        complexity_choice = input("Select complexity [0-1] (default: 0): ").strip()
+        if complexity_choice == "" or complexity_choice == "0":
+            complexity = 0
+            break
+        elif complexity_choice == "1":
+            complexity = 1
+            break
+        else:
+            print("Invalid choice. Please enter 0 or 1.")
+    
+    print("\nConfiguration:")
+    print(f"  Mode: {mode}")
+    print(f"  Duration: {duration}s")
+    print(f"  Complexity: {complexity}")
+    print("\nPress Enter to start trial...")
+    input()
+    
+    # Create args-like object for compatibility
+    class Args:
+        def __init__(self, mode, duration, complexity):
+            self.mode = mode
+            self.duration = duration
+            self.complexity = complexity
+    
+    args = Args(mode, duration, complexity)
 
     # Session ID
     session_id = f"trial_{datetime.now().strftime('%Y%m%d_%H%M%S')}"

@@ -4,7 +4,7 @@ import json
 import os
 import logging
 from typing import Dict, Any
-from .angle_utils import AngleEngine
+from angle_utils import AngleEngine
 
 logger = logging.getLogger(__name__)
 

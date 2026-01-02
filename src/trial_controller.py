@@ -4,12 +4,12 @@ import signal
 from typing import Optional
 import cv2
 # Import components
-from .camera_interface import CameraInterface
-from .hand_tracker import HandTracker
-from .emg_interface import EMGInterface
-from .grip_interface import GripInterface
-from .fusion_engine import FusionEngine
-from .mirror_display import MirrorDisplay
+from camera_interface import CameraInterface
+from hand_tracker import HandTracker
+from emg_interface import EMGInterface
+from grip_interface import GripInterface
+from fusion_engine import FusionEngine
+from mirror_display import MirrorDisplay
 
 logger = logging.getLogger(__name__)
 
