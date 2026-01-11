@@ -95,8 +95,9 @@ class CameraInterface:
         """Threaded worker to keep the latest frame available."""
         while self.running:
             frame = None
-            
             if self.picam2:
+                time.sleep(0.5)
+            
                 # Capture from Raspberry Pi CSI camera
                 try:
                     frame = self.picam2.capture_array()

@@ -110,7 +110,8 @@ def main():
     # 1. Initialize Hardware (or Mocks)
     is_mock = (args.mode == "mock")
     
-    camera = CameraInterface(mock_mode=is_mock) # Defaults to webcam even in mock if avail, or synthetic
+    # Use the CSI camera interface on the Raspberry Pi
+    camera = CameraInterface(mock_mode=is_mock, use_csi=True)
     emg = EMGInterface(mock_mode=is_mock)
     grip = GripInterface(mock_mode=is_mock)
     
