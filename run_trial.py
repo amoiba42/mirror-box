@@ -72,6 +72,21 @@ def main():
         else:
             print("Invalid choice. Please enter 0 or 1.")
     
+    # Display mode for SSH/headless
+    print("\nDisplay Mode:")
+    print("  1. GUI Mode (show camera feed)")
+    print("  2. Headless Mode (data only)")
+    while True:
+        display_choice = input("Select display mode [1-2] (default: 1): ").strip()
+        if display_choice == "" or display_choice == "1":
+            headless = False
+            break
+        elif display_choice == "2":
+            headless = True
+            break
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+    
     print("\nConfiguration:")
     print(f"  Mode: {mode}")
     print(f"  Duration: {duration}s")
