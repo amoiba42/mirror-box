@@ -45,10 +45,8 @@ class CameraInterface:
         self.running = False
         self.lock = threading.Lock()
         self.thread = None
-        self.fps_start_time = 0
-        self.frame_count = 0
-
-        # ROI (Region of Interest) state for future optimization
+        
+        # ROI (Region of Interest) state
         self.roi_bounds: Optional[Tuple[int, int, int, int]] = None # x, y, w, h
 
     def start(self):
@@ -58,10 +56,10 @@ class CameraInterface:
         if self.use_csi and PICAMERA2_AVAILABLE:
             # Initialize Raspberry Pi CSI camera
             try:
-                from picamera2 import Picamera2
                 self.picam2 = Picamera2()
+                # FIX: Explicitly request RGB888 to ensure cvtColor works correctly later
                 config = self.picam2.create_video_configuration(
-                    main={"size": (self.width, self.height)}
+                    main={"size": (self.width, self.height), "format": "RGB888"}
                 )
                 self.picam2.configure(config)
                 self.picam2.start()
@@ -70,15 +68,16 @@ class CameraInterface:
                 logger.error(f"Failed to initialize CSI camera: {e}")
                 if not self.mock_mode:
                     raise RuntimeError("CSI camera could not be opened.")
-        else:
+                self.picam2 = None # Ensure we fall back cleanly
+        
+        # Only setup OpenCV if NOT using CSI (or if CSI failed and we want to try USB)
+        if not self.picam2: 
             # Use OpenCV VideoCapture for USB cameras
             self.cap = cv2.VideoCapture(self.source)
             
-            # Set resolution (may not work on all video files, works on webcams)
             if isinstance(self.source, int):
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
                 self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                # Pi 5 Note: Set FPS to 30 explicitly later for CSI cameras
                 self.cap.set(cv2.CAP_PROP_FPS, 30)
 
             if not self.cap.isOpened():
@@ -95,20 +94,21 @@ class CameraInterface:
         """Threaded worker to keep the latest frame available."""
         while self.running:
             frame = None
-            if self.picam2:
-                time.sleep(0.5)
             
-                # Capture from Raspberry Pi CSI camera
+            # --- STRATEGY 1: Raspberry Pi CSI Camera ---
+            if self.picam2:
+                # FIX: Removed time.sleep(0.5) which was killing FPS
                 try:
+                    # Capture array (RGB because of config)
                     frame = self.picam2.capture_array()
-                    # Convert from RGB to BGR for OpenCV compatibility
-                    if frame is not None and len(frame.shape) == 3:
+                    if frame is not None:
+                        # Convert RGB -> BGR for OpenCV
                         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 except Exception as e:
                     logger.warning(f"CSI camera capture failed: {e}")
-                    
+            
+            # --- STRATEGY 2: USB Camera / Video File ---
             elif self.cap and self.cap.isOpened():
-                # Capture from USB camera
                 ret, frame = self.cap.read()
                 
                 if not ret:
@@ -120,22 +120,31 @@ class CameraInterface:
                         logger.warning("Frame capture failed.")
                         frame = None
             
+            # --- STRATEGY 3: Synthetic Mock (Fallback) ---
+            elif self.mock_mode:
+                dummy_frame = np.random.randint(0, 255, (self.height, self.width, 3), dtype=np.uint8)
+                time.sleep(0.033) # Limit mock generation to ~30 FPS
+                frame = dummy_frame
+
+            # --- Post-Processing & Storage ---
             if frame is not None:
-                # Update buffer with latest frame
+                # FIX: Apply ROI cropping if set
+                if self.roi_bounds:
+                    x, y, w, h = self.roi_bounds
+                    # Ensure ROI is within frame bounds
+                    frame_h, frame_w = frame.shape[:2]
+                    x = max(0, min(x, frame_w))
+                    y = max(0, min(y, frame_h))
+                    w = max(1, min(w, frame_w - x))
+                    h = max(1, min(h, frame_h - y))
+                    frame = frame[y:y+h, x:x+w]
+
+                # Update shared buffer
                 with self.lock:
                     self.frame_buffer = frame
-                    # Use monotonic clock for drift-free timing
                     self.timestamp_buffer = time.monotonic_ns()
             
-            elif self.mock_mode:
-                # Generate synthetic noise frame for testing without camera
-                dummy_frame = np.random.randint(0, 255, (self.height, self.width, 3), dtype=np.uint8)
-                time.sleep(0.033) # Approx 30 FPS
-                with self.lock:
-                    self.frame_buffer = dummy_frame
-                    self.timestamp_buffer = time.monotonic_ns()
-            
-            # Simple yield to prevent CPU hogging
+            # Small yield to prevent 100% CPU usage in tight loops
             time.sleep(0.001)
 
     def read(self) -> Tuple[Optional[np.ndarray], int]:
@@ -159,9 +168,14 @@ class CameraInterface:
             
         if self.picam2:
             self.picam2.stop()
+            self.picam2.close() # Good practice to close resources
         
         logger.info("Camera released.")
 
     def set_roi(self, x, y, w, h):
-        """Set a region of interest to crop subsequent frames (Performance optimization)."""
-        self.roi_bounds = (x, y, w, h)
+        """Set a region of interest to crop subsequent frames."""
+        # Sanity check to prevent crashes with negative values
+        if w > 0 and h > 0 and x >= 0 and y >= 0:
+            self.roi_bounds = (x, y, w, h)
+        else:
+            logger.warning(f"Invalid ROI parameters ignored: {x, y, w, h}")
