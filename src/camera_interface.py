@@ -23,7 +23,7 @@ class CameraInterface:
     2. Real Hardware: Placeholder for RPi5 LibCamera/Picamera2 integration.
     """
 
-    def __init__(self, source: Union[int, str] = 0, width: int = 640, height: int = 480, mock_mode: bool = False, use_csi: bool = False):
+    def __init__(self, source: Union[int, str] = 0, width: int = 640, height: int = 480, mock_mode: bool = False, use_csi: bool = False, use_gstreamer: bool = False):
         """
         Args:
             source: Camera index (0) or path to video file.
@@ -31,12 +31,14 @@ class CameraInterface:
             height: Target capture height.
             mock_mode: If True, generates synthetic frames if source fails, or loops video.
             use_csi: If True, use Raspberry Pi CSI camera via picamera2.
+            use_gstreamer: If True, use a GStreamer pipeline for camera capture.
         """
         self.source = source
         self.width = width
         self.height = height
         self.mock_mode = mock_mode
         self.use_csi = use_csi
+        self.use_gstreamer = use_gstreamer
         
         self.cap = None
         self.picam2 = None
@@ -51,9 +53,24 @@ class CameraInterface:
 
     def start(self):
         """Initializes camera and starts the capture thread."""
-        logger.info(f"Starting CameraInterface (Source: {self.source}, Mock: {self.mock_mode}, CSI: {self.use_csi})")
+        logger.info(f"Starting CameraInterface (Source: {self.source}, Mock: {self.mock_mode}, CSI: {self.use_csi}, GStreamer: {self.use_gstreamer})")
         
-        if self.use_csi and PICAMERA2_AVAILABLE:
+        if self.use_gstreamer:
+            pipeline = (
+                "libcamerasrc ! "
+                "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
+                "videoconvert ! "
+                "video/x-raw,format=BGR ! "
+                "appsink drop=true"
+            )
+            self.cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+            if not self.cap.isOpened():
+                logger.error("Failed to open GStreamer pipeline.")
+                if not self.mock_mode:
+                    raise RuntimeError("GStreamer pipeline could not be opened.")
+                logger.info("Falling back to other methods or mock.")
+        
+        elif self.use_csi and PICAMERA2_AVAILABLE:
             # Initialize Raspberry Pi CSI camera
             try:
                 self.picam2 = Picamera2()

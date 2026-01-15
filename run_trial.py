@@ -111,7 +111,7 @@ def main():
     is_mock = (args.mode == "mock")
     
     # Use the CSI camera interface on the Raspberry Pi
-    camera = CameraInterface(mock_mode=is_mock, use_csi=True)
+    camera = CameraInterface(mock_mode=is_mock, use_gstreamer=True)
     emg = EMGInterface(mock_mode=is_mock)
     grip = GripInterface(mock_mode=is_mock)
     
