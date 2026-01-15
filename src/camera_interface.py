@@ -50,58 +50,58 @@ class CameraInterface:
         
         # ROI (Region of Interest) state
         self.roi_bounds: Optional[Tuple[int, int, int, int]] = None # x, y, w, h
-
     def start(self):
-        """Initializes camera and starts the capture thread."""
-        logger.info(f"Starting CameraInterface (Source: {self.source}, Mock: {self.mock_mode}, CSI: {self.use_csi}, GStreamer: {self.use_gstreamer})")
-        
+        logger.info(
+            f"Starting CameraInterface "
+            f"(Source: {self.source}, Mock: {self.mock_mode}, "
+            f"CSI: {self.use_csi}, GStreamer: {self.use_gstreamer})"
+        )
+
+        # Enforce valid combinations
         if self.use_gstreamer:
+            self.use_csi = True
+
             pipeline = (
                 "libcamerasrc ! "
-                "video/x-raw,format=NV12,width=640,height=480,framerate=30/1 ! "
+                "video/x-raw,format=NV12,"
+                f"width={self.width},height={self.height},framerate=30/1 ! "
                 "videoconvert ! "
                 "video/x-raw,format=BGR ! "
-                "appsink drop=true"
+                "appsink drop=true sync=false"
             )
+
+            logger.info(f"GStreamer pipeline: {pipeline}")
             self.cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+
             if not self.cap.isOpened():
                 logger.error("Failed to open GStreamer pipeline.")
                 if not self.mock_mode:
                     raise RuntimeError("GStreamer pipeline could not be opened.")
-                logger.info("Falling back to other methods or mock.")
-        
+                self.cap = None
+
         elif self.use_csi and PICAMERA2_AVAILABLE:
-            # Initialize Raspberry Pi CSI camera
             try:
                 self.picam2 = Picamera2()
-                # FIX: Explicitly request RGB888 to ensure cvtColor works correctly later
                 config = self.picam2.create_video_configuration(
                     main={"size": (self.width, self.height), "format": "RGB888"}
                 )
                 self.picam2.configure(config)
                 self.picam2.start()
-                logger.info("Raspberry Pi CSI camera initialized")
+                logger.info("Picamera2 CSI camera initialized")
             except Exception as e:
                 logger.error(f"Failed to initialize CSI camera: {e}")
                 if not self.mock_mode:
-                    raise RuntimeError("CSI camera could not be opened.")
-                self.picam2 = None # Ensure we fall back cleanly
-        
-        # Only setup OpenCV if NOT using CSI (or if CSI failed and we want to try USB)
-        if not self.picam2: 
-            # Use OpenCV VideoCapture for USB cameras
+                    raise
+                self.picam2 = None
+
+        elif not self.mock_mode:
+            # Plain OpenCV fallback (USB webcam)
             self.cap = cv2.VideoCapture(self.source)
-            
-            if isinstance(self.source, int):
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-                self.cap.set(cv2.CAP_PROP_FPS, 30)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
 
             if not self.cap.isOpened():
-                logger.error("Failed to open camera source.")
-                if not self.mock_mode:
-                    raise RuntimeError("Camera source could not be opened.")
-                logger.info("Falling back to pure synthetic mock generation.")
+                raise RuntimeError("Camera source could not be opened.")
 
         self.running = True
         self.thread = threading.Thread(target=self._capture_loop, daemon=True)
