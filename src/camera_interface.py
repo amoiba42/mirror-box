@@ -67,7 +67,7 @@ class CameraInterface:
                 f"width={self.width},height={self.height},framerate=30/1 ! "
                 "videoconvert ! "
                 "video/x-raw,format=BGR ! "
-                "appsink drop=true sync=false"
+                "appsink drop=true"
             )
 
             logger.info(f"GStreamer pipeline: {pipeline}")
