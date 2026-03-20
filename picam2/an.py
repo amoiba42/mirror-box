@@ -1,35 +1,47 @@
+import time
+import cv2  # OpenCV for displaying the image
+import numpy as np
 from picamera2 import Picamera2
 from libcamera import controls
 
-# Initialize the camera
+# 1. Initialize the camera
 picam2 = Picamera2()
-config = picam2.create_preview_configuration(main={"format": "XRGB888", "size": (640, 480)})
+
+# 2. Configure for RGB888 (Pi 5 prefers this)
+config = picam2.create_preview_configuration(main={"format": "NV12", "size": (640, 480)})
 picam2.configure(config)
 picam2.start()
 
-# --- SETTING CONTROLS FOR NATURAL LOOK ---
+# 3. Apply Natural Look Controls (Fix for NoIR Camera)
 picam2.set_controls({
-    # 1. Reduce Saturation (Default is 1.0). 
-    # Lowering this counteracts the "popping" colors caused by IR sensitivity.
-    "Saturation": 0.6, 
-
-    # 2. Set Sharpness (Default is 1.0).
-    # Reducing slightly to 0.5 - 0.8 removes the "digital" look of edges.
-    "Sharpness": 0.75,
-
-    # 3. Ensure Auto White Balance is on Normal/Auto
-    "AwbMode": controls.AwbModeEnum.Auto,
-    
-    # 4. Brightness (Default is 0.0). 
-    # Leave at 0.0 unless the image is consistently too dark/bright.
+    "Saturation": 0.55,      # Reduced saturation to stop "popping" neon colors
+    "Sharpness": 0.8,        # Slightly softer than digital default
+    "AwbMode": controls.AwbModeEnum.Auto, # Auto White Balance
     "Brightness": 0.0,
-
-    # 5. Contrast (Default is 1.0).
-    # Sometimes IR wash makes images look flat; if so, bump this to 1.1 or 1.2.
-    # For now, keep it standard to avoid "popping".
     "Contrast": 1.0
 })
 
-# Keep the script running to view the feed
-input("Press Enter to stop...")
-picam2.stop()
+print("Camera running. Press 'q' to quit.")
+
+try:
+    while True:
+        # 4. Capture the current frame as a numpy array
+        frame = picam2.capture_array()
+
+        # 5. Convert RGB (Camera) to BGR (OpenCV uses BGR for display)
+        # Without this, your red and blue colors will be swapped!
+        display_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # 6. Show the frame in a window
+        cv2.imshow("Natural Camera Feed", display_frame)
+
+        # 7. Wait 1ms for a keypress; if 'q' is pressed, break loop
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+except KeyboardInterrupt:
+    pass
+finally:
+    print("\nStopping camera...")
+    picam2.stop()
+    cv2.destroyAllWindows()

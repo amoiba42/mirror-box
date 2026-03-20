@@ -14,7 +14,7 @@ class HandDetectionResult:
     confidence: float
 
 class HandTracker:
-    def __init__(self, model_complexity: int = 1, min_detection_confidence: float = 0.5):
+    def __init__(self, model_complexity: int = 1, min_detection_confidence: float = 0.7):
         self.mp_hands = mp.solutions.hands
         self.mp_drawing = mp.solutions.drawing_utils
         self.hands = self.mp_hands.Hands(

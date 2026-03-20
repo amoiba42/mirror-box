@@ -1,9 +1,9 @@
 import time
 import argparse
 import logging
+import os
 import cv2
 from datetime import datetime
-
 # Import our modules
 from src.camera_interface import CameraInterface
 from src.hand_tracker import HandTracker
@@ -86,6 +86,10 @@ def main():
             break
         else:
             print("Invalid choice. Please enter 1 or 2.")
+
+    if not headless and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        logger.warning("No display detected (DISPLAY/WAYLAND_DISPLAY not set); forcing Headless Mode.")
+        headless = True
     
     print("\nConfiguration:")
     print(f"  Mode: {mode}")
@@ -109,8 +113,10 @@ def main():
 
     # 1. Initialize Hardware (or Mocks)
     is_mock = (args.mode == "mock")
-    
-    # Use the CSI camera interface on the Raspberry Pi
+
+    # Camera:
+    # Use CameraInterface with GStreamer to avoid picamera2/libcamera Python bindings.
+    # Internally it uses `libcamerasrc` when available and falls back to `rpicam-vid`/`libcamera-vid`.
     camera = CameraInterface(mock_mode=is_mock, use_gstreamer=True)
     emg = EMGInterface(mock_mode=is_mock)
     grip = GripInterface(mock_mode=is_mock)
@@ -183,9 +189,10 @@ def main():
             cv2.putText(frame, f"EMG: {data['emg']:.1f}", (10, 210), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 100, 255), 2)
             
-            cv2.imshow("Rehab Mock Trial", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            if not headless:
+                cv2.imshow("Rehab Trial", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
             
     except KeyboardInterrupt:
         logger.info("Trial interrupted by user.")
@@ -194,7 +201,8 @@ def main():
         camera.stop()
         emg.stop()
         fusion.close()
-        cv2.destroyAllWindows()
+        if not headless:
+            cv2.destroyAllWindows()
         logger.info("Trial Complete. Data saved.")
 
 if __name__ == "__main__":

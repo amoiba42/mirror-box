@@ -1,18 +1,21 @@
 # Core Science Stack
-numpy>=1.26.0
+# CRITICAL: We must hold numpy back to <2.0 because OpenCV and Picamera2
+# are not yet compatible with the Numpy 2.0 binary interface (ABI).
+numpy>=1.26.0,<2.0.0
 scipy>=1.11.0
 pandas>=2.1.0
 
 # Computer Vision & ML
-# Note: On Pi 5, install opencv via system apt (python3-opencv) for best speed.
-# For desktop dev, this wheel is fine:
+# Since we are using a "Strict" venv, we MUST install opencv via pip here.
+# The system apt version is invisible to us now.
 opencv-python>=4.8.0
 mediapipe>=0.10.9
+picamera2>=0.3.19
 
 # Utilities
-click>=8.1.0        # For the CLI
-colorama>=0.4.6     # Nice terminal outputs
-matplotlib>=3.8.0   # For plotting data summaries later
+click>=8.1.0
+colorama>=0.4.6
+matplotlib>=3.8.0
 
 # Testing
 pytest>=7.4.0
